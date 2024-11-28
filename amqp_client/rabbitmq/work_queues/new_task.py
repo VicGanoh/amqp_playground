@@ -6,12 +6,12 @@ channel = connection.channel()
 
 channel.queue_declare(queue="task_queue", durable=True)
 
-channel.exchange_declare(exchange="task_exchange", exchange_type="fanout")
+channel.exchange_declare(exchange="task_fanout", exchange_type="fanout")
 
 message = " ".join(sys.argv[1:]) or "Hello, World!"
 
 channel.basic_publish(
-    exchange="task_exchange",
+    exchange="task_fanout",
     routing_key="",
     body=message,
     properties=pika.BasicProperties(
