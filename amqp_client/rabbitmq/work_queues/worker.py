@@ -4,7 +4,7 @@ import pika
 connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
 channel = connection.channel()
 
-channel.queue_declare(queue="task_queue")
+channel.queue_declare(queue="task_queue", durable=True)
 
 def callback(ch, method, properties, body):
     print(f" [x] Received {body.decode()}")
