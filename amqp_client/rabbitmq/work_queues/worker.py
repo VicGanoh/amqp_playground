@@ -4,6 +4,8 @@ import pika
 connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
 channel = connection.channel()
 
+channel.exchange_declare(exchange="task_exchange", exchange_type="fanout")
+
 channel.queue_declare(queue="task_queue", durable=True)
 
 def callback(ch, method, properties, body):
