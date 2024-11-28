@@ -8,6 +8,8 @@ channel.exchange_declare(exchange="task_exchange", exchange_type="fanout")
 
 channel.queue_declare(queue="task_queue", durable=True)
 
+channel.queue_bind(exchange="task_exchange", queue="task_queue")
+
 def callback(ch, method, properties, body):
     print(f" [x] Received {body.decode()}")
     time.sleep(body.count(b"."))
