@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # local apps
-    "chat_server",
+    "amqp_client",
 ]
 
 MIDDLEWARE = [
