@@ -1,3 +1,4 @@
+import json
 from typing import Any
 import pika
 
@@ -23,7 +24,7 @@ class OrderPublisher:
         """
         try:
             # Create routing key based on event type category
-            routing_key = f"order.{event_type}.{orde_data['category']}"
+            routing_key = f"order.{event_type}.{order_data['category']}"
 
             # Convert order data to JSON
             message = json.dumps(order_data)
