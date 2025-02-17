@@ -13,7 +13,7 @@ class OrderPublisher:
         for attempt in range(max_retries):
             try:
                 # Initialize RabbitMQ connection with Docker container settings
-                credentials = pika.PlainCredentials('guest', 'guest')
+                credentials = pika.PlainCredentials("guest", "guest")
                 parameters = pika.ConnectionParameters(
                     host='localhost',
                     port=5672,
