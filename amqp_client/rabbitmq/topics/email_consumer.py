@@ -1,35 +1,61 @@
+from asyncio import Queue
 import pika
 import json
 import time
 
 class EmailConsumer:
     def __init__(self):
-        # Initialize RabbitMQ connection and channel
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
-        self.channel = self.connection.channel()
+        self.connect_with_retry()
 
-        # Declare exchange
-        self.exchange_name = "order_events"
-        self.channel.exchange_declare(exchange=self.exchange_name, exchange_type="topic")
+    def connect_with_retry(self, max_retries=5, retry_delay=5):
+        """Attempt to connect to RabbitMQ with retries"""
+        for attempt in range(max_retries):
+            try:
+                # Initialize RabbitMQ connection and channel
+                self.connection = pika.BlockingConnection(
+                    pika.ConnectionParameters(host="localhost")
+                )
+                self.channel = self.connection.channel()
 
-        result = self.channel.queue_declare(queue="email_notifications", durable=True)
-        self.queue_name = result.method.queue
+                # Declare exchange with consistent settings
+                self.exchange_name = "order_events"
+                self.channel.exchange_declare(
+                    exchange=self.exchange_name, 
+                    exchange_type="topic",
+                    durable=True  # Make sure this matches the publisher
+                )
 
-        # Bind queue to exchange with specific routing key
-        binding_keys = [
-            "order.created.*",
-            "order.updated.*",
-            "order.cancelled.*",
-        ]
+                result = self.channel.queue_declare(
+                    queue="email_notifications", 
+                    durable=True
+                )
+                self.queue_name = result.method.queue
 
-        for binding_key in binding_keys:
-            self.channel.queue_bind(
-                queue=self.queue_name,
-                exchange=self.exchange_name,
-                routing_key=binding_key
-            )
+                # Bind queue to exchange with specific routing key
+                binding_keys = [
+                    "order.created.*",
+                    "order.updated.*",
+                    "order.cancelled.*",
+                ]
 
-        print(" [*] Waiting for order events. To exit press CTRL+C")
+                for binding_key in binding_keys:
+                    self.channel.queue_bind(
+                        queue=self.queue_name,
+                        exchange=self.exchange_name,
+                        routing_key=binding_key
+                    )
+
+                print(" [*] Successfully connected to RabbitMQ")
+                print(" [*] Waiting for order events. To exit press CTRL+C")
+                return
+
+            except pika.exceptions.AMQPConnectionError:
+                if attempt < max_retries - 1:
+                    print(f" [!] Connection failed. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                    time.sleep(retry_delay)
+                else:
+                    print(" [!] Failed to connect to RabbitMQ after multiple attempts")
+                    raise
     
     def simulate_email_sending(
             self, to_email: str, subject: str, body: str
@@ -56,8 +82,13 @@ class EmailConsumer:
                 body = f"Thank you for ordering {data['product']}! Your order (ID: {data['order_id']}) has been confirmed."
             elif event_type == "updated":
                 subject = "Order Updated"
-                body = f"The order with ID: {data['id']} has been updated."
-            
+                body = f"The order with ID: {data['order_id']} has been updated."
+            elif event_type == "cancelled":
+                subject = "Order Cancelled"
+                body = f"The order with ID: {data['order_id']} has been cancelled."
+            else:
+                print(f" [!] Unknown event type: {event_type}")
+                return
 
             # Simulate sending email
             self.simulate_email_sending(
@@ -83,8 +114,10 @@ class EmailConsumer:
         self.channel.start_consuming()
 
 if __name__ == "__main__":
-    consumer = EmailConsumer()
     try:
+        consumer = EmailConsumer()
         consumer.start_consuming()
     except KeyboardInterrupt:
         print(" [*] Email consumer interrupted. Exiting...")
+    except Exception as e:
+        print(f" [!] Error: {e}")
